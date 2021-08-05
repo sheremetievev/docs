@@ -1,0 +1,151 @@
+---
+#
+# Секция-шаблон для настройки подключения к Fabric CA Server
+# Она будет ниже использоваться для создания msp и tls orderer, peer и user.
+#
+_ca1: &defaultCA
+
+  #
+  # url указывает адрес подключения к Fabric CA Server
+  #
+  url: 'http://localhost:7054'
+
+  #
+  # Настройки для шифрованного соединения с Fabric CA Server
+  #
+  tls:
+    #
+    # certfiles указывает сертификат TLS CA
+    #
+    certfiles: '/etc/ssl/certs/ca-cert.pem'
+
+    # Если Fabric CA Server настроен на строгий контроль клиентов, то
+    # нужно указать эти поля:
+    # clientcert клиентский сертификат TLS
+    # clientkey клиентский закрытый ключ TLS
+    # clientcert: 'fabric-ca/client.crt'
+    # clientkey: 'fabric-ca/client.key'
+#
+# Поля для выпуска сертификатов
+#
+_csr1: &defaultCSR
+    Country: 'RU'
+    Locality: 'Города' # <-- город
+    Organization: 'Организация' # <-- наименование организации
+#
+# Настройки для сторонних программ
+#
+tools:
+  #
+  # Путь до программы 'fabric-ca-client'
+  #
+  fabric-ca-client: '/usr/local/gopath/bin/fabric-ca-client'
+#
+# Секция описания peer участника
+#
+peers:
+  #
+  # OUName известный и уникальный идентификатор участника, который будет записан в сертификаты
+  #
+  - OUName: 'AirlineMSP'
+    #
+    # Domain уникальное доменное имя участника
+    #
+    Domain: 'airline.com'
+
+    #
+    # CSR стандартные поля выпускаемых сертификатов (берется из шаблоны выше, но
+    # может отличаться, если описать их тут явно)
+    #
+    CSR: *defaultCSR
+
+    #
+    # Описание узлов peer
+    #
+    Specs:
+      #
+      # Hostname определяет название папки в которой сформируются файлы как "{Hostname}.{Domain}/"
+      #
+      - Hostname: afsc-peer0
+      # CA определяет настройки подключения к Fabric CA Server
+      # для этого пира, т.е. можно указывать разные Fabric CA Server у peer,
+      # orderer и user. В данном примере используется один Fabric CA, поэтому значения
+      # просто копируются из шаблона и указывается лишь credentials c identity и пароль.
+      #
+      # Желательно чтобы {Hostname}.{Domain} совпадал с identity
+      #
+        CA:
+          << : *defaultCA
+
+          credentials:
+            # identity идентификатор peer указанный при регистрации
+            identity: 'afsc-peer0.airline.com'
+            # password пароль идентификатора при регистрации
+            password: 'secretPasswordPeer1'
+        SANS:
+          - localhost
+          - 127.0.0.1
+      - Hostname: afsc-peer1
+        CA:
+          << : *defaultCA
+
+          credentials:
+            identity: 'afsc-peer1.airline.com'
+            password: 'secretPasswordPeer2'
+        SANS:
+          - localhost
+          - 127.0.0.1
+
+    #
+    # Peer Пользователи
+    #
+    Users:
+        #
+        # Admin: true указывает, что этот прользователь будет иметь права администратора
+        #
+      - Admin: true
+        CA:
+          << : *defaultCA
+          credentials:
+            identity: 'afsc-admin@airline.com'
+            password: 'SecretPasswordPeerAdmin'
+      - CA:
+          << : *defaultCA
+          credentials:
+            identity: 'afsc-client0.airline.com'
+            password: 'SecretPasswordPeerUser1'
+      - CA:
+          << : *defaultCA
+          credentials:
+            identity: 'afsc-client1.airline.com'
+            password: 'SecretaPasswordPeerUser2'
+
+#
+# Структура orderers точно такая же как и у описанной выше peers
+#
+orderers:
+  - OUName: 'AirlineOrdererMSP'
+    Domain: 'airline.com'
+    CSR: *defaultCSR
+    Specs:
+      - Hostname: afsc-orderer
+        CA:
+          << : *defaultCA
+          credentials:
+            identity: 'afsc-orderer.airline.com'
+            password: 'SecretPasswordOrderer1'
+        SANS:
+          - localhost
+          - 127.0.0.1
+    Users:
+      - Admin: true
+        CA:
+          << : *defaultCA
+          credentials:
+            identity: 'Admin@afsc-orderer.airline.com'
+            password: 'SecretPasswordOrdererAdmin'
+      - CA:
+          << : *defaultCA
+          credentials:
+            identity: 'User1@afsc-orderer.airline.com'
+            password: 'SecretPasswordOrdererUser1'
